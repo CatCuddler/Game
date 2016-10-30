@@ -1,22 +1,18 @@
 #include "pch.h"
 
-//#include <Kore/Application.h>
 #include <Kore/IO/FileReader.h>
 #include <Kore/Math/Core.h>
 #include <Kore/System.h>
 #include <Kore/Input/Keyboard.h>
 #include <Kore/Input/Mouse.h>
-#include <Kore/Audio/Mixer.h>
 #include <Kore/Graphics/Image.h>
 #include <Kore/Graphics/Graphics.h>
 #include <Kore/Log.h>
-#include "ObjLoader.h"
 #include "MeshObject.h"
 
 using namespace Kore;
 
-#define CAMERA_ROTATION_SPEED_X 0.001
-#define CAMERA_ROTATION_SPEED_Y 0.001
+#define CAMERA_ROTATION_SPEED 0.001
 
 namespace {
     const int width = 1024;
@@ -27,10 +23,9 @@ namespace {
     MeshObject* sphere;
     TextureUnit tex;
     
-    Kore::ConstantLocation cl_modelViewMatrix;
-    Kore::ConstantLocation cl_normalMatrix;
-    
-    Kore::ConstantLocation cl_lightPos;
+    Kore::ConstantLocation cl_model;
+    Kore::ConstantLocation cl_view;
+    Kore::ConstantLocation cl_projection;
     
     double startTime;
     float lastT = 0;
@@ -38,15 +33,8 @@ namespace {
     const float movementSpeed = 10;
     
     vec3 cameraPosition;
+    vec3 cameraRotation;
     vec3 lookAt;
-    
-    float cameraRotX = 0;
-    float cameraRotY = 0;
-    float cameraRotZ = 0;
-    
-    float lightPosX;
-    float lightPosY;
-    float lightPosZ;
     
     bool moveUp = false;
     bool moveDown = false;
@@ -60,26 +48,7 @@ namespace {
     
     void initCamera() {
         cameraPosition = vec3(0, 0, 20);
-        
-        cameraRotX = 0;
-        cameraRotY = Kore::pi;
-        cameraRotZ = 0;
-    }
-    
-    void rotate3d(float &x, float &y, float &z, float rx, float ry, float rz) {
-        float d1x = Kore::cos(ry) * x + Kore::sin(ry) * z;
-        float d1y = y;
-        float d1z = Kore::cos(ry) * z - Kore::sin(ry) * x;
-        float d2x = d1x;
-        float d2y = Kore::cos(rx) * d1y - Kore::sin(rx) * d1z;
-        float d2z = Kore::cos(rx) * d1z + Kore::sin(rx) * d1y;
-        float d3x = Kore::cos(rz) * d2x - Kore::sin(rz) * d2y;
-        float d3y = Kore::cos(rz) * d2y + Kore::sin(rz) * d2x;
-        float d3z = d2z;
-        
-        x = d3x;
-        y = d3y;
-        z = d3z;
+        cameraRotation = vec3(0, Kore::pi, 0);
     }
     
     void update() {
@@ -87,8 +56,6 @@ namespace {
         
         float deltaT = t - lastT;
         lastT = t;
-        
-        //Kore::Audio::update();
         
         Graphics::begin();
         //Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff000000);
@@ -99,51 +66,33 @@ namespace {
         Graphics::setRenderState(BlendingState, true);
         Graphics::setRenderState(DepthTest, true);
         
-        //update camera:
-        float cameraMovementX = 0;
-        float cameraMovementY = 0;
-        float cameraMovementZ = 0;
-        
         if (moveUp)
-            cameraMovementY += deltaT * movementSpeed;
+            cameraPosition.y() += deltaT * movementSpeed;
         if (moveDown)
-            cameraMovementY -= deltaT * movementSpeed;
+            cameraPosition.y() -= deltaT * movementSpeed;
         if (moveLeft)
-            cameraMovementX -= deltaT * movementSpeed;
+            cameraPosition.x() += deltaT * movementSpeed;
         if (moveRight)
-            cameraMovementX += deltaT * movementSpeed;
+            cameraPosition.x() -= deltaT * movementSpeed;
         if (moveForward)
-            cameraMovementZ += deltaT * movementSpeed;
+            cameraPosition.z() += deltaT * movementSpeed;
         if (moveBackward)
-            cameraMovementZ -= deltaT * movementSpeed;
+            cameraPosition.z() -= deltaT * movementSpeed;
         
-        // rotate direction according to current rotation
-        rotate3d(cameraMovementX, cameraMovementY, cameraMovementZ, -cameraRotX, 0, -cameraRotZ);
-        rotate3d(cameraMovementX, cameraMovementY, cameraMovementZ, 0, -cameraRotY, -cameraRotZ);
+        // Projection matrix
+        mat4 P = mat4::Perspective(45.0f, (float)width / (float)height, 0.1f, 100);
         
-        cameraPosition.x() += cameraMovementX;
-        cameraPosition.y() += cameraMovementY;
-        cameraPosition.z() += cameraMovementZ;
+        // Camera matrix
+        vec3 lookAt = cameraPosition + vec3(0, 0, -1);
+        mat4 V = mat4::lookAt(cameraPosition, lookAt, vec3(0, 1, 0));
+        V *= mat4::Rotation(cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
         
-        // prepare model view matrix and pass it to shaders
-        Kore::mat4 modelView = Kore::mat4::RotationZ(cameraRotZ)
-        * Kore::mat4::RotationX(cameraRotX)
-        * Kore::mat4::RotationY(cameraRotY)
-        * Kore::mat4::Translation(-cameraPosition.x(), -cameraPosition.y(), -cameraPosition.z());
+        // Model matrix
+        mat4 M = mat4::Identity();
         
-        Graphics::setMatrix(cl_modelViewMatrix, modelView);
-        
-        // prepare normal matrix and pass it to shaders
-        Kore::mat4 normalMatrix = modelView;
-        normalMatrix.Invert();
-        normalMatrix = normalMatrix.Transpose();
-        Graphics::setMatrix(cl_normalMatrix, normalMatrix);
-        
-        // update light pos
-        lightPosX = 20;// * Kore::sin(2 * t);
-        lightPosY = 10;
-        lightPosZ = 20;// * Kore::cos(2 * t);
-        Graphics::setFloat3(cl_lightPos, lightPosX, lightPosY, lightPosZ);
+        Graphics::setMatrix(cl_model, M);
+        Graphics::setMatrix(cl_view, V);
+        Graphics::setMatrix(cl_projection, P);
         
         // check if objects should be rendered
         //sphere->checkRender();
@@ -186,7 +135,7 @@ namespace {
                 initCamera();
                 break;
             case Key_L:
-                Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", cameraPosition.x(), cameraPosition.y(), cameraPosition.z(), cameraRotX, cameraRotY, cameraRotZ);
+                Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", cameraPosition.x(), cameraPosition.y(), cameraPosition.z(), cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
                 break;
             default:
                 break;
@@ -223,8 +172,8 @@ namespace {
     
     void mouseMove(int windowId, int x, int y, int movementX, int movementY) {
         if (rotate) {
-            cameraRotX += (float)((mousePressY - y) * CAMERA_ROTATION_SPEED_X);
-            cameraRotY += (float)((mousePressX - x) * CAMERA_ROTATION_SPEED_Y);
+            cameraRotation.x() += (float)((mousePressX - x) * CAMERA_ROTATION_SPEED);
+            cameraRotation.z() += (float)((mousePressY - y) * CAMERA_ROTATION_SPEED);
             mousePressX = x;
             mousePressY = y;
         }
@@ -259,11 +208,11 @@ namespace {
         
         tex = program->getTextureUnit("tex");
         
-        cl_modelViewMatrix = program->getConstantLocation("modelViewMatrix");
-        cl_normalMatrix = program->getConstantLocation("normalMatrix");
-        cl_lightPos = program->getConstantLocation("lightPos");
+        cl_model = program->getConstantLocation("M");
+        cl_view = program->getConstantLocation("V");
+        cl_projection = program->getConstantLocation("P");
         
-        sphere = new MeshObject("sphere.obj", "sand.png", structure, cl_modelViewMatrix, 5.0f);
+        sphere = new MeshObject("earth.obj", "earth.png", structure, cl_projection, 3.0f);
         
         Graphics::setRenderState(DepthTest, true);
         Graphics::setRenderState(DepthTestCompare, ZCompareLess);
@@ -281,9 +230,6 @@ int kore(int argc, char** argv) {
     Kore::System::setCallback(update);
     
     startTime = System::time();
-    Kore::Mixer::init();
-    Kore::Audio::init();
-    //Kore::Mixer::play(new SoundStream("back.ogg", true));
     
     Keyboard::the()->KeyDown = keyDown;
     Keyboard::the()->KeyUp = keyUp;

@@ -21,7 +21,7 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, Kore::Vert
         vertices[i * 8 + 1] = mesh->vertices[i * 8 + 1] * scale;
         vertices[i * 8 + 2] = mesh->vertices[i * 8 + 2] * scale;
         vertices[i * 8 + 3] = mesh->vertices[i * 8 + 3];
-        vertices[i * 8 + 4] = mesh->vertices[i * 8 + 4];
+        vertices[i * 8 + 4] = 1.0f - mesh->vertices[i * 8 + 4];
         vertices[i * 8 + 5] = mesh->vertices[i * 8 + 5];
         vertices[i * 8 + 6] = mesh->vertices[i * 8 + 6];
         vertices[i * 8 + 7] = mesh->vertices[i * 8 + 7];
