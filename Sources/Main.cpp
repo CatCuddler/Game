@@ -20,12 +20,14 @@ namespace {
     Shader* vertexShader;
     Shader* fragmentShader;
     Program* program;
-    MeshObject* sphere;
+    
+    const int numObjects = 2;
+    MeshObject* objects[numObjects] = { nullptr, nullptr };
     TextureUnit tex;
     
-    Kore::ConstantLocation cl_model;
-    Kore::ConstantLocation cl_view;
-    Kore::ConstantLocation cl_projection;
+    Kore::ConstantLocation mLocation;
+    Kore::ConstantLocation vLocation;
+    Kore::ConstantLocation pLocation;
     
     double startTime;
     float lastT = 0;
@@ -87,22 +89,24 @@ namespace {
         mat4 V = mat4::lookAt(cameraPosition, lookAt, vec3(0, 1, 0));
         V *= mat4::Rotation(cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
         
-        // Model matrix
-        mat4 M = mat4::Identity();
         
-        Graphics::setMatrix(cl_model, M);
-        Graphics::setMatrix(cl_view, V);
-        Graphics::setMatrix(cl_projection, P);
+        Graphics::setMatrix(vLocation, V);
+        Graphics::setMatrix(pLocation, P);
         
-        // check if objects should be rendered
-        //sphere->checkRender();
-        //log(Kore::Info, "Render sphere %i", sphere->renderObj);
-        
-        // render
-        //if (sphere->renderObj) {
-            sphere->render(tex, 0);
-        //}
-        
+        // check if object should be rendered
+        for(int i = 0; i < numObjects; i++) {
+            MeshObject** current = &objects[i];
+            // set the model matrix
+            Graphics::setMatrix(mLocation, (*current)->M);
+            
+            (*current)->checkRender();
+            //log(Kore::Info, "Render sphere %i %i", i, (*current)->renderObj);
+            
+            //if (sphere->renderObj) {
+            (*current)->render(tex);
+            //}
+            //++current;
+        }
         
         Graphics::end();
         Graphics::swapBuffers();
@@ -208,11 +212,14 @@ namespace {
         
         tex = program->getTextureUnit("tex");
         
-        cl_model = program->getConstantLocation("M");
-        cl_view = program->getConstantLocation("V");
-        cl_projection = program->getConstantLocation("P");
+        mLocation = program->getConstantLocation("M");
+        vLocation = program->getConstantLocation("V");
+        pLocation = program->getConstantLocation("P");
         
-        sphere = new MeshObject("earth.obj", "earth.png", structure, cl_projection, 3.0f);
+        objects[0] = new MeshObject("earth.obj", "earth.png", structure, 1.0f);
+        objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
+        objects[1] = new MeshObject("earth.obj", "earth.png", structure, 3.0f);
+        objects[1]->M = mat4::Translation(-10.0f, 0.0f, 0.0f);
         
         Graphics::setRenderState(DepthTest, true);
         Graphics::setRenderState(DepthTestCompare, ZCompareLess);

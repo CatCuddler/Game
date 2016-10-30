@@ -5,9 +5,9 @@
 
 using namespace Kore;
 
-MeshObject::MeshObject(const char* meshFile, const char* textureFile, Kore::VertexStructure structure, Kore::ConstantLocation pLocation, float scale) : occlusionQuery(0), renderObj(false), scale(scale) {
+MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale) : occlusionQuery(0), renderObj(false) {
     mesh = loadObj(meshFile);
-    image = new Kore::Texture(textureFile, true);
+    image = new Texture(textureFile, true);
     
     vertexBuffer = new VertexBuffer(mesh->numVertices, structure, 0);
     float* vertices = vertexBuffer->lock();
@@ -26,12 +26,12 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, Kore::Vert
         vertices[i * 8 + 6] = mesh->vertices[i * 8 + 6];
         vertices[i * 8 + 7] = mesh->vertices[i * 8 + 7];
         
-        if (mesh->vertices[i * 8 + 0] < min_x) min_x = mesh->vertices[i * 8 + 0];
-        if (mesh->vertices[i * 8 + 0] > max_x) max_x = mesh->vertices[i * 8 + 0];
-        if (mesh->vertices[i * 8 + 1] < min_y) min_y = mesh->vertices[i * 8 + 1];
-        if (mesh->vertices[i * 8 + 1] > max_y) max_y = mesh->vertices[i * 8 + 1];
-        if (mesh->vertices[i * 8 + 2] < min_z) min_z = mesh->vertices[i * 8 + 2];
-        if (mesh->vertices[i * 8 + 2] > max_z) max_z = mesh->vertices[i * 8 + 2];
+        if (vertices[i * 8 + 0] < min_x) min_x = vertices[i * 8 + 0];
+        if (vertices[i * 8 + 0] > max_x) max_x = vertices[i * 8 + 0];
+        if (vertices[i * 8 + 1] < min_y) min_y = vertices[i * 8 + 1];
+        if (vertices[i * 8 + 1] > max_y) max_y = vertices[i * 8 + 1];
+        if (vertices[i * 8 + 2] < min_z) min_z = vertices[i * 8 + 2];
+        if (vertices[i * 8 + 2] > max_z) max_z = vertices[i * 8 + 2];
     }
     vertexBuffer->unlock();
     
@@ -43,7 +43,6 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, Kore::Vert
     indexBuffer->unlock();
     
     Graphics::initOcclusionQuery(&occlusionQuery);
-    
 }
 
 void MeshObject::checkRender() {
@@ -53,7 +52,23 @@ void MeshObject::checkRender() {
     //Graphics::setRenderState(DepthWrite, false);
     
     Graphics::setRenderState(DepthTest, true);
-    Graphics::renderOcclusionQuery(occlusionQuery, pLocation, min_x, max_x, min_y, max_y, min_z, max_z);
+    
+    int size = 12*3*3;
+    float boundingBox[] = {
+        min_x, min_y, min_z,    min_x, min_y, max_z,    min_x, max_y, max_z,
+        max_x, max_y, min_z,    min_x, min_y, min_z,    min_x, max_y, min_z,
+        max_x, min_y, max_z,    min_x, min_y, min_z,    max_x, min_y, min_z,
+        max_x, max_y, min_z,    max_x, min_y, min_z,    min_x, min_y, min_z,
+        min_x, min_y, min_z,    min_x, max_y, max_z,    min_x, max_y, min_z,
+        max_x, min_y, max_z,    min_x, min_y, max_z,    min_x, min_y, min_z,
+        min_x, max_y, max_z,    min_x, min_y, max_z,    max_x, min_y, max_z,
+        max_x, max_y, max_z,    max_x, min_y, min_z,    max_x, max_y, min_z,
+        max_x, min_y, min_z,    max_x, max_y, max_z,    max_x, min_y, max_z,
+        max_x, max_y, max_z,    max_x, max_y, min_z,    min_x, max_y, min_z,
+        max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
+        max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
+    float* boundingP = &boundingBox[0];
+    Graphics::renderOcclusionQuery(occlusionQuery, boundingP, size * 4);
      
     int pixelCount = 0;
     Graphics::getOcclusionResults(occlusionQuery, pixelCount);
@@ -66,8 +81,8 @@ void MeshObject::checkRender() {
     //Graphics::setRenderState(DepthWrite, true);
 }
 
-void MeshObject::render(TextureUnit tex, int instances) {
-    //Graphics::setTexture(tex, image);
+void MeshObject::render(TextureUnit tex) {
+    Graphics::setTexture(tex, image);
     Graphics::setVertexBuffer(*vertexBuffer);
     Graphics::setIndexBuffer(*indexBuffer);
     Graphics::drawIndexedVertices();
