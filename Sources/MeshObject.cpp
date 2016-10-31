@@ -2,10 +2,11 @@
 #include "MeshObject.h"
 
 #include <Kore/Graphics/Graphics.h>
+#include <Kore/Log.h>
 
 using namespace Kore;
 
-MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale) : occlusionQuery(0), renderObj(false) {
+MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale) : occlusionQuery(0), pixelCount(0),occlusionState(Visible), occluded(true) {
     mesh = loadObj(meshFile);
     image = new Texture(textureFile, true);
     
@@ -45,40 +46,54 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
     Graphics::initOcclusionQuery(&occlusionQuery);
 }
 
-void MeshObject::checkRender() {
-    // Dont write to color and depth buffer. Only test if the object would be rendered.
-    // TODO: put this in main if we have more than one object???
-    //Graphics::setColorMask(false, false, false, false);
-    //Graphics::setRenderState(DepthWrite, false);
+MeshObject::~MeshObject() {
+    Graphics::deleteOcclusionQuery(&occlusionQuery);
+}
+
+void MeshObject::renderOcclusionQuery() {
+    // Dont render bounding box. Only test if the object would be rendered.
+    Graphics::setColorMask(false, false, false, false);
+    Graphics::setRenderState(DepthWrite, false);
     
-    Graphics::setRenderState(DepthTest, true);
+    // Dont render bounding box each time
+    if (occlusionState != Waiting) {
+        occlusionState = Waiting;
+        
+        int size = 12*3*3;
+        float boundingBox[] = {
+            min_x, min_y, min_z,    min_x, min_y, max_z,    min_x, max_y, max_z,
+            max_x, max_y, min_z,    min_x, min_y, min_z,    min_x, max_y, min_z,
+            max_x, min_y, max_z,    min_x, min_y, min_z,    max_x, min_y, min_z,
+            max_x, max_y, min_z,    max_x, min_y, min_z,    min_x, min_y, min_z,
+            min_x, min_y, min_z,    min_x, max_y, max_z,    min_x, max_y, min_z,
+            max_x, min_y, max_z,    min_x, min_y, max_z,    min_x, min_y, min_z,
+            min_x, max_y, max_z,    min_x, min_y, max_z,    max_x, min_y, max_z,
+            max_x, max_y, max_z,    max_x, min_y, min_z,    max_x, max_y, min_z,
+            max_x, min_y, min_z,    max_x, max_y, max_z,    max_x, min_y, max_z,
+            max_x, max_y, max_z,    max_x, max_y, min_z,    min_x, max_y, min_z,
+            max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
+            max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
+        float* boundingP = &boundingBox[0];
+        Graphics::renderOcclusionQuery(occlusionQuery, boundingP, size * 4);
+        //delete[] boundingBox;
+    }
     
-    int size = 12*3*3;
-    float boundingBox[] = {
-        min_x, min_y, min_z,    min_x, min_y, max_z,    min_x, max_y, max_z,
-        max_x, max_y, min_z,    min_x, min_y, min_z,    min_x, max_y, min_z,
-        max_x, min_y, max_z,    min_x, min_y, min_z,    max_x, min_y, min_z,
-        max_x, max_y, min_z,    max_x, min_y, min_z,    min_x, min_y, min_z,
-        min_x, min_y, min_z,    min_x, max_y, max_z,    min_x, max_y, min_z,
-        max_x, min_y, max_z,    min_x, min_y, max_z,    min_x, min_y, min_z,
-        min_x, max_y, max_z,    min_x, min_y, max_z,    max_x, min_y, max_z,
-        max_x, max_y, max_z,    max_x, min_y, min_z,    max_x, max_y, min_z,
-        max_x, min_y, min_z,    max_x, max_y, max_z,    max_x, min_y, max_z,
-        max_x, max_y, max_z,    max_x, max_y, min_z,    min_x, max_y, min_z,
-        max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
-        max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
-    float* boundingP = &boundingBox[0];
-    Graphics::renderOcclusionQuery(occlusionQuery, boundingP, size * 4);
-     
-    int pixelCount = 0;
-    Graphics::getOcclusionResults(occlusionQuery, pixelCount);
-    if (pixelCount > 0) {
-        renderObj = true;
+    bool available;
+    Graphics::queryResultsAvailable(occlusionQuery, &available);
+    if (available) {
+        Graphics::getQueryResults(occlusionQuery, &pixelCount);
+        if (pixelCount > 0) {
+            occluded = true;
+            occlusionState = Visible;
+        } else {
+            occluded = false;
+            occlusionState = Hidden;
+        }
     }
      
     // Re-enable writing to color buffer and depth buffer
-    //Graphics::setColorMask(true, true, true, true);
-    //Graphics::setRenderState(DepthWrite, true);
+    Graphics::setColorMask(true, true, true, true);
+    Graphics::setRenderState(DepthWrite, true);
 }
 
 void MeshObject::render(TextureUnit tex) {

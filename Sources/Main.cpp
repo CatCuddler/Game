@@ -48,6 +48,8 @@ namespace {
     bool rotate = false;
     int mousePressX, mousePressY;
     
+    int renderObjectNum = 0;
+    
     void initCamera() {
         cameraPosition = vec3(0, 0, 20);
         cameraRotation = vec3(0, Kore::pi, 0);
@@ -67,6 +69,8 @@ namespace {
         Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
         Graphics::setRenderState(BlendingState, true);
         Graphics::setRenderState(DepthTest, true);
+        Graphics::setRenderState(DepthTestCompare, ZCompareLess);
+        Graphics::setRenderState(DepthWrite, true);
         
         if (moveUp)
             cameraPosition.y() += deltaT * movementSpeed;
@@ -89,23 +93,21 @@ namespace {
         mat4 V = mat4::lookAt(cameraPosition, lookAt, vec3(0, 1, 0));
         V *= mat4::Rotation(cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
         
-        
         Graphics::setMatrix(vLocation, V);
         Graphics::setMatrix(pLocation, P);
         
-        // check if object should be rendered
+        renderObjectNum = 0;
         for(int i = 0; i < numObjects; i++) {
             MeshObject** current = &objects[i];
             // set the model matrix
             Graphics::setMatrix(mLocation, (*current)->M);
             
-            (*current)->checkRender();
-            //log(Kore::Info, "Render sphere %i %i", i, (*current)->renderObj);
+            (*current)->renderOcclusionQuery();
             
-            //if (sphere->renderObj) {
-            (*current)->render(tex);
-            //}
-            //++current;
+            if ((*current)->occluded) {
+                (*current)->render(tex);
+                renderObjectNum++;
+            }
         }
         
         Graphics::end();
@@ -139,7 +141,8 @@ namespace {
                 initCamera();
                 break;
             case Key_L:
-                Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", cameraPosition.x(), cameraPosition.y(), cameraPosition.z(), cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
+                //Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", cameraPosition.x(), cameraPosition.y(), cameraPosition.z(), cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
+                Kore::log(Kore::LogLevel::Info, "Render Object Count: %i\n", renderObjectNum);
                 break;
             default:
                 break;

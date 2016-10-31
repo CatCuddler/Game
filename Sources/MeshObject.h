@@ -7,6 +7,12 @@
 #include <Kore/Graphics/Shader.h>
 #include "ObjLoader.h"
 
+
+namespace Kore {
+    enum EntityMeshOcclusionState {
+        Hidden, Visible, Waiting
+    };
+}
 class MeshObject {
     
 private:
@@ -17,6 +23,7 @@ private:
     Kore::Texture* image;
     
     Kore::uint occlusionQuery;
+    Kore::uint pixelCount;
     
     float min_x;
     float max_x;
@@ -27,11 +34,13 @@ private:
     
 public:
     
-    bool renderObj;
+    bool occluded;
+    Kore::EntityMeshOcclusionState occlusionState;
     
     MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale = 1.0f);
+    ~MeshObject();
     
-    void checkRender();
+    void renderOcclusionQuery();
     void render(Kore::TextureUnit tex);
     
     Kore::mat4 M; // Model matrix
