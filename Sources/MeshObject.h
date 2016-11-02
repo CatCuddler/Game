@@ -16,21 +16,18 @@ namespace Kore {
 class MeshObject {
     
 private:
-    Kore::VertexBuffer* vertexBuffer;
+    Kore::VertexBuffer* vertexBuffer;               // Mesh Vertex Buffer
+    Kore::VertexBuffer* vertexBoundingBoxBuffer;    // Bounding Box Vertex Buffer
     Kore::IndexBuffer* indexBuffer;
+    
+    int trianglesCount;
+    float* boundingBoxVertices;
     
     Mesh* mesh;
     Kore::Texture* image;
     
     Kore::uint occlusionQuery;
     Kore::uint pixelCount;
-    
-    float min_x;
-    float max_x;
-    float min_y;
-    float max_y;
-    float min_z;
-    float max_z;
     
 public:
     

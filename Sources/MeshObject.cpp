@@ -10,9 +10,12 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
     mesh = loadObj(meshFile);
     image = new Texture(textureFile, true);
     
+    // Mesh Vertex Buffer
     vertexBuffer = new VertexBuffer(mesh->numVertices, structure, 0);
     float* vertices = vertexBuffer->lock();
     
+    float min_x, max_x, min_y;
+    float max_y, min_z, max_z;
     min_x = max_x = mesh->vertices[0];
     min_y = max_y = mesh->vertices[1];
     min_z = max_z = mesh->vertices[2];
@@ -35,6 +38,34 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
         if (vertices[i * 8 + 2] > max_z) max_z = vertices[i * 8 + 2];
     }
     vertexBuffer->unlock();
+    
+    // Bounding Box Vertex Buffer
+    VertexStructure str;
+    str.add("pos", Float3VertexData);
+    trianglesCount = 12 * 3;
+    vertexBoundingBoxBuffer = new VertexBuffer(trianglesCount * 3, str, 0);
+    boundingBoxVertices = vertexBoundingBoxBuffer->lock();
+    
+    float boundingBox[] = {
+        min_x, min_y, min_z,    min_x, min_y, max_z,    min_x, max_y, max_z,
+        max_x, max_y, min_z,    min_x, min_y, min_z,    min_x, max_y, min_z,
+        max_x, min_y, max_z,    min_x, min_y, min_z,    max_x, min_y, min_z,
+        max_x, max_y, min_z,    max_x, min_y, min_z,    min_x, min_y, min_z,
+        min_x, min_y, min_z,    min_x, max_y, max_z,    min_x, max_y, min_z,
+        max_x, min_y, max_z,    min_x, min_y, max_z,    min_x, min_y, min_z,
+        min_x, max_y, max_z,    min_x, min_y, max_z,    max_x, min_y, max_z,
+        max_x, max_y, max_z,    max_x, min_y, min_z,    max_x, max_y, min_z,
+        max_x, min_y, min_z,    max_x, max_y, max_z,    max_x, min_y, max_z,
+        max_x, max_y, max_z,    max_x, max_y, min_z,    min_x, max_y, min_z,
+        max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
+        max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
+    
+    for (int v = 0; v < trianglesCount * 3; v++) {
+        boundingBoxVertices[v * 3 + 0] = boundingBox[v * 3 + 0];
+        boundingBoxVertices[v * 3 + 1] = boundingBox[v * 3 + 1];
+        boundingBoxVertices[v * 3 + 2] = boundingBox[v * 3 + 2];
+    }
+    vertexBoundingBoxBuffer->unlock();
     
     indexBuffer = new IndexBuffer(mesh->numFaces * 3);
     int* indices = indexBuffer->lock();
@@ -59,23 +90,13 @@ void MeshObject::renderOcclusionQuery() {
     if (occlusionState != Waiting) {
         occlusionState = Waiting;
         
-        int size = 12*3*3;
-        float boundingBox[] = {
-            min_x, min_y, min_z,    min_x, min_y, max_z,    min_x, max_y, max_z,
-            max_x, max_y, min_z,    min_x, min_y, min_z,    min_x, max_y, min_z,
-            max_x, min_y, max_z,    min_x, min_y, min_z,    max_x, min_y, min_z,
-            max_x, max_y, min_z,    max_x, min_y, min_z,    min_x, min_y, min_z,
-            min_x, min_y, min_z,    min_x, max_y, max_z,    min_x, max_y, min_z,
-            max_x, min_y, max_z,    min_x, min_y, max_z,    min_x, min_y, min_z,
-            min_x, max_y, max_z,    min_x, min_y, max_z,    max_x, min_y, max_z,
-            max_x, max_y, max_z,    max_x, min_y, min_z,    max_x, max_y, min_z,
-            max_x, min_y, min_z,    max_x, max_y, max_z,    max_x, min_y, max_z,
-            max_x, max_y, max_z,    max_x, max_y, min_z,    min_x, max_y, min_z,
-            max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
-            max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
-        float* boundingP = &boundingBox[0];
-        Graphics::renderOcclusionQuery(occlusionQuery, boundingP, size * 4);
-        //delete[] boundingBox;
+        vertexBoundingBoxBuffer->unlock();
+        
+        Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
+        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
+        
+        boundingBoxVertices = vertexBoundingBoxBuffer->lock();
+        
     }
     
     bool available;
