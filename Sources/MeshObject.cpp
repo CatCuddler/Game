@@ -99,8 +99,7 @@ void MeshObject::renderOcclusionQuery() {
         
     }
     
-    bool available;
-    Graphics::queryResultsAvailable(occlusionQuery, &available);
+    bool available = Graphics::queryResultsAvailable(occlusionQuery);
     if (available) {
         Graphics::getQueryResults(occlusionQuery, &pixelCount);
         if (pixelCount > 0) {
