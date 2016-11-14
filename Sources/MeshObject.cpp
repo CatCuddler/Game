@@ -75,6 +75,8 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
     indexBuffer->unlock();
     
     Graphics::initOcclusionQuery(&occlusionQuery);
+    
+    M = mat4::Identity();
 }
 
 MeshObject::~MeshObject() {

@@ -9,6 +9,7 @@
 #include <Kore/Graphics/Graphics.h>
 #include <Kore/Log.h>
 #include "MeshObject.h"
+#include <iostream>
 
 using namespace Kore;
 
@@ -17,184 +18,184 @@ using namespace Kore;
 namespace {
     const int width = 1024;
     const int height = 768;
+    double startTime;
     Shader* vertexShader;
     Shader* fragmentShader;
     Program* program;
     
-    const int numObjects = 2;
-    MeshObject* objects[numObjects] = { nullptr, nullptr };
+    // null terminated array of MeshObject pointers
+    MeshObject* objects[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+	int renderObjectNum = 0;
+    
+    // uniform locations - add more as you see fit
     TextureUnit tex;
+    ConstantLocation pLocation;
+    ConstantLocation vLocation;
+    ConstantLocation mLocation;
+
+    vec3 eye;
+    vec3 globe;
+    vec3 light;
     
-    Kore::ConstantLocation mLocation;
-    Kore::ConstantLocation vLocation;
-    Kore::ConstantLocation pLocation;
+    bool left, right, up, down, forward, backward;
+	
+	bool rotate = false;
+	int mousePressX, mousePressY;
+
+    //int mode = 0;
+    //float roughness = 0.9f;
+    //float specular = 0.1f;
+    //bool toggle = false;
     
-    double startTime;
-    float lastT = 0;
-    
-    const float movementSpeed = 10;
-    
-    vec3 cameraPosition;
-    vec3 cameraRotation;
-    vec3 lookAt;
-    
-    bool moveUp = false;
-    bool moveDown = false;
-    bool moveRight = false;
-    bool moveLeft = false;
-    bool moveForward = false;
-    bool moveBackward = false;
-    
-    bool rotate = false;
-    int mousePressX, mousePressY;
-    
-    int renderObjectNum = 0;
-    
-    void initCamera() {
-        cameraPosition = vec3(0, 0, 20);
-        cameraRotation = vec3(0, Kore::pi, 0);
-    }
-    
+	void initCameraAndLight() {
+		eye = vec3(0, 0, 20);
+		globe = vec3(0, Kore::pi, 0);
+		light = vec3(0, 1.95f, -3.0f);
+	}
+
     void update() {
         float t = (float)(System::time() - startTime);
         
-        float deltaT = t - lastT;
-        lastT = t;
+        const float speed = 0.05f;
+        if (left) {
+            eye.x() -= speed;
+        }
+        if (right) {
+            eye.x() += speed;
+        }
+        if (forward) {
+            eye.z() += speed;
+        }
+        if (backward) {
+            eye.z() -= speed;
+        }
+        if (up) {
+            eye.y() += speed;
+        }
+        if (down) {
+            eye.y() -= speed;
+        }
         
         Graphics::begin();
-        //Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff000000);
-        Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag | Graphics::ClearStencilFlag, 0xFF000000, 1.0f, 0);
+        Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff000000, 1000.0f);
         
         program->set();
-        Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
-        Graphics::setRenderState(BlendingState, true);
-        Graphics::setRenderState(DepthTest, true);
-        Graphics::setRenderState(DepthTestCompare, ZCompareLess);
-        Graphics::setRenderState(DepthWrite, true);
+		Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
+		Graphics::setRenderState(BlendingState, true);
+		Graphics::setRenderState(DepthTest, true);
+		Graphics::setRenderState(DepthTestCompare, ZCompareLess);
+		Graphics::setRenderState(DepthWrite, true);
         
-        if (moveUp)
-            cameraPosition.y() += deltaT * movementSpeed;
-        if (moveDown)
-            cameraPosition.y() -= deltaT * movementSpeed;
-        if (moveLeft)
-            cameraPosition.x() += deltaT * movementSpeed;
-        if (moveRight)
-            cameraPosition.x() -= deltaT * movementSpeed;
-        if (moveForward)
-            cameraPosition.z() += deltaT * movementSpeed;
-        if (moveBackward)
-            cameraPosition.z() -= deltaT * movementSpeed;
+		// Projection matrix
+		mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
+
+		// Camera matrix
+		vec3 lookAt = eye + vec3(0, 0, -1);
+		mat4 V = mat4::lookAt(eye, lookAt, vec3(0, 1, 0));
+		V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
+
+		
+		Graphics::setMatrix(vLocation, V);
+		Graphics::setMatrix(pLocation, P);
         
-        // Projection matrix
-        mat4 P = mat4::Perspective(45.0f, (float)width / (float)height, 0.1f, 100);
-        
-        // Camera matrix
-        vec3 lookAt = cameraPosition + vec3(0, 0, -1);
-        mat4 V = mat4::lookAt(cameraPosition, lookAt, vec3(0, 1, 0));
-        V *= mat4::Rotation(cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
-        
-        Graphics::setMatrix(vLocation, V);
-        Graphics::setMatrix(pLocation, P);
-        
-        renderObjectNum = 0;
-        for(int i = 0; i < numObjects; i++) {
-            MeshObject** current = &objects[i];
+		renderObjectNum = 0;
+        // iterate the MeshObjects
+        MeshObject** current = &objects[0];
+        while (*current != nullptr) {
             // set the model matrix
             Graphics::setMatrix(mLocation, (*current)->M);
             
-            (*current)->renderOcclusionQuery();
-            
-            if ((*current)->occluded) {
-                (*current)->render(tex);
-                renderObjectNum++;
-            }
+            (*current)->render(tex);
+            ++current;
+
+			renderObjectNum++;
         }
         
         Graphics::end();
         Graphics::swapBuffers();
     }
     
-    void keyDown(KeyCode code, wchar_t character) {
-        switch (code)
-        {
-            case Key_Left:
-            case Key_A:
-                moveLeft = true;
-                break;
-            case Key_Right:
-            case Key_D:
-                moveRight = true;
-                break;
-            case Key_Up:
-                moveUp = true;
-                break;
-            case Key_Down:
-                moveDown = true;
-                break;
-            case Key_W:
-                moveForward = true;
-                break;
-            case Key_S:
-                moveBackward = true;
-                break;
-            case Key_R:
-                initCamera();
-                break;
-            case Key_L:
-                //Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", cameraPosition.x(), cameraPosition.y(), cameraPosition.z(), cameraRotation.x(), cameraRotation.y(), cameraRotation.z());
-                Kore::log(Kore::LogLevel::Info, "Render Object Count: %i\n", renderObjectNum);
-                break;
-            default:
-                break;
-        }
-    }
-    
-    void keyUp(KeyCode code, wchar_t character) {
-        switch (code)
-        {
-            case Key_Left:
-            case Key_A:
-                moveLeft = false;
-                break;
-            case Key_Right:
-            case Key_D:
-                moveRight = false;
-                break;
-            case Key_Up:
-                moveUp = false;
-                break;
-            case Key_Down:
-                moveDown = false;
-                break;
-            case Key_W:
-                moveForward = false;
-                break;
-            case Key_S:
-                moveBackward = false;
-                break;
-            default:
-                break;
-        }
-    }
-    
-    void mouseMove(int windowId, int x, int y, int movementX, int movementY) {
-        if (rotate) {
-            cameraRotation.x() += (float)((mousePressX - x) * CAMERA_ROTATION_SPEED);
-            cameraRotation.z() += (float)((mousePressY - y) * CAMERA_ROTATION_SPEED);
-            mousePressX = x;
-            mousePressY = y;
-        }
-    }
-    
-    void mousePress(int windowId, int button, int x, int y) {
-        rotate = true;
-        mousePressX = x;
-        mousePressY = y;
-    }
-    
-    void mouseRelease(int windowId, int button, int x, int y) {
-        rotate = false;
-    }
+	void keyDown(KeyCode code, wchar_t character) {
+		switch (code)
+		{
+		case Key_Left:
+		case Key_A:
+			left = true;
+			break;
+		case Key_Right:
+		case Key_D:
+			right = true;
+			break;
+		case Key_Up:
+			up = true;
+			break;
+		case Key_Down:
+			down = true;
+			break;
+		case Key_W:
+			forward = true;
+			break;
+		case Key_S:
+			backward = true;
+			break;
+		case Key_R:
+			initCameraAndLight();
+			break;
+		case Key_L:
+			Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", eye.x(), eye.y(), eye.z(), globe.x(), globe.y(), globe.z());
+			//Kore::log(Kore::LogLevel::Info, "Render Object Count: %i\n", renderObjectNum);
+			break;
+		default:
+			break;
+		}
+	}
+
+	void keyUp(KeyCode code, wchar_t character) {
+		switch (code)
+		{
+		case Key_Left:
+		case Key_A:
+			left = false;
+			break;
+		case Key_Right:
+		case Key_D:
+			right = false;
+			break;
+		case Key_Up:
+			up = false;
+			break;
+		case Key_Down:
+			down = false;
+			break;
+		case Key_W:
+			forward = false;
+			break;
+		case Key_S:
+			backward = false;
+			break;
+		default:
+			break;
+		}
+	}
+
+	void mouseMove(int windowId, int x, int y, int movementX, int movementY) {
+		if (rotate) {
+			globe.x() += (float)((mousePressX - x) * CAMERA_ROTATION_SPEED);
+			globe.z() += (float)((mousePressY - y) * CAMERA_ROTATION_SPEED);
+			mousePressX = x;
+			mousePressY = y;
+		}
+	}
+
+	void mousePress(int windowId, int button, int x, int y) {
+		rotate = true;
+		mousePressX = x;
+		mousePressY = y;
+	}
+
+	void mouseRelease(int windowId, int button, int x, int y) {
+		rotate = false;
+	}
     
     void init() {
         FileReader vs("shader.vert");
@@ -215,20 +216,22 @@ namespace {
         
         tex = program->getTextureUnit("tex");
         
-        mLocation = program->getConstantLocation("M");
+		pLocation = program->getConstantLocation("P");
         vLocation = program->getConstantLocation("V");
-        pLocation = program->getConstantLocation("P");
+        mLocation = program->getConstantLocation("M");
         
-        objects[0] = new MeshObject("earth.obj", "earth.png", structure, 1.0f);
-        objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
-        objects[1] = new MeshObject("earth.obj", "earth.png", structure, 3.0f);
-        objects[1]->M = mat4::Translation(-10.0f, 0.0f, 0.0f);
+		objects[0] = new MeshObject("earth.obj", "earth.png", structure, 1.0f);
+		objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
+		objects[1] = new MeshObject("earth.obj", "earth.png", structure, 3.0f);
+		objects[1]->M = mat4::Translation(-10.0f, 0.0f, 0.0f);
         
         Graphics::setRenderState(DepthTest, true);
         Graphics::setRenderState(DepthTestCompare, ZCompareLess);
         
-        Graphics::setTextureAddressing(tex, U, Repeat);
-        Graphics::setTextureAddressing(tex, V, Repeat);
+        Graphics::setTextureAddressing(tex, Kore::U, Repeat);
+        Graphics::setTextureAddressing(tex, Kore::V, Repeat);
+        
+        eye = vec3(0, 2, -3);
     }
 }
 
@@ -243,12 +246,12 @@ int kore(int argc, char** argv) {
     
     Keyboard::the()->KeyDown = keyDown;
     Keyboard::the()->KeyUp = keyUp;
-    Mouse::the()->Move = mouseMove;
-    Mouse::the()->Press = mousePress;
-    Mouse::the()->Release = mouseRelease;
+	Mouse::the()->Move = mouseMove;
+	Mouse::the()->Press = mousePress;
+	Mouse::the()->Release = mouseRelease;
     
-    initCamera();
-    
+	initCameraAndLight();
+
     Kore::System::start();
     
     return 0;
