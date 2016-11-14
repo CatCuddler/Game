@@ -27,10 +27,9 @@ private:
     Kore::Texture* image;
     
     Kore::uint occlusionQuery;
-    Kore::uint pixelCount;
-    
+
 public:
-    
+	bool useQueries;
     bool occluded;
     Kore::EntityMeshOcclusionState occlusionState;
     
@@ -41,5 +40,7 @@ public:
     void render(Kore::TextureUnit tex);
     
     Kore::mat4 M; // Model matrix
+
+	Kore::uint pixelCount; // should be private
     
 };

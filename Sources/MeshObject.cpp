@@ -6,7 +6,7 @@
 
 using namespace Kore;
 
-MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale) : occlusionQuery(0), pixelCount(0),occlusionState(Visible), occluded(true) {
+MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore::VertexStructure& structure, float scale) : occlusionQuery(0), pixelCount(0),occlusionState(Visible), occluded(true), useQueries(true) {
     mesh = loadObj(meshFile);
     image = new Texture(textureFile, true);
     
@@ -38,6 +38,13 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
         if (vertices[i * 8 + 2] > max_z) max_z = vertices[i * 8 + 2];
     }
     vertexBuffer->unlock();
+
+	indexBuffer = new IndexBuffer(mesh->numFaces * 3);
+	int* indices = indexBuffer->lock();
+	for (int i = 0; i < mesh->numFaces * 3; ++i) {
+		indices[i] = mesh->indices[i];
+	}
+	indexBuffer->unlock();
     
     // Bounding Box Vertex Buffer
     VertexStructure str;
@@ -60,48 +67,35 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
         max_x, max_y, max_z,    min_x, max_y, min_z,    min_x, max_y, max_z,
         max_x, max_y, max_z,    min_x, max_y, max_z,    max_x, min_y, max_z };
     
-    for (int v = 0; v < trianglesCount * 3; v++) {
+    for (int v = 0; v < trianglesCount; v++) {
         boundingBoxVertices[v * 3 + 0] = boundingBox[v * 3 + 0];
         boundingBoxVertices[v * 3 + 1] = boundingBox[v * 3 + 1];
         boundingBoxVertices[v * 3 + 2] = boundingBox[v * 3 + 2];
     }
     vertexBoundingBoxBuffer->unlock();
     
-    indexBuffer = new IndexBuffer(mesh->numFaces * 3);
-    int* indices = indexBuffer->lock();
-    for (int i = 0; i < mesh->numFaces * 3; ++i) {
-        indices[i] = mesh->indices[i];
-    }
-    indexBuffer->unlock();
-    
-    Graphics::initOcclusionQuery(&occlusionQuery);
+	useQueries = Graphics::initOcclusionQuery(&occlusionQuery);
     
     M = mat4::Identity();
 }
 
 MeshObject::~MeshObject() {
-    Graphics::deleteOcclusionQuery(&occlusionQuery);
+	Graphics::deleteOcclusionQuery(occlusionQuery);
 }
 
 void MeshObject::renderOcclusionQuery() {
-    // Dont render bounding box. Only test if the object would be rendered.
-    Graphics::setColorMask(false, false, false, false);
-    Graphics::setRenderState(DepthWrite, false);
-    
-    // Dont render bounding box each time
     if (occlusionState != Waiting) {
         occlusionState = Waiting;
         
         vertexBoundingBoxBuffer->unlock();
         
         Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
-        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
+        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount * 3);
         
         boundingBoxVertices = vertexBoundingBoxBuffer->lock();
-        
     }
     
-    bool available = Graphics::queryResultsAvailable(occlusionQuery);
+    bool available = Graphics::isQueryResultsAvailable(occlusionQuery);
     if (available) {
         Graphics::getQueryResults(occlusionQuery, &pixelCount);
         if (pixelCount > 0) {
@@ -111,11 +105,13 @@ void MeshObject::renderOcclusionQuery() {
             occluded = false;
             occlusionState = Hidden;
         }
-    }
-     
-    // Re-enable writing to color buffer and depth buffer
-    Graphics::setColorMask(true, true, true, true);
-    Graphics::setRenderState(DepthWrite, true);
+	} else {
+		// If Query is not done yet; avoid wait by continuing with worst - case scenario.
+		//occluded = true;
+		//occlusionState = Visible;
+	}
+
+
 }
 
 void MeshObject::render(TextureUnit tex) {

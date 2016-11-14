@@ -35,28 +35,21 @@ namespace {
 
     vec3 eye;
     vec3 globe;
-    vec3 light;
     
     bool left, right, up, down, forward, backward;
 	
 	bool rotate = false;
 	int mousePressX, mousePressY;
-
-    //int mode = 0;
-    //float roughness = 0.9f;
-    //float specular = 0.1f;
-    //bool toggle = false;
     
-	void initCameraAndLight() {
+	void initCamera() {
 		eye = vec3(0, 0, 20);
 		globe = vec3(0, Kore::pi, 0);
-		light = vec3(0, 1.95f, -3.0f);
 	}
 
     void update() {
         float t = (float)(System::time() - startTime);
         
-        const float speed = 0.05f;
+        const float speed = 0.5f;
         if (left) {
             eye.x() -= speed;
         }
@@ -77,39 +70,63 @@ namespace {
         }
         
         Graphics::begin();
-        Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff000000, 1000.0f);
+        Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xFF000000, 1.0f, 0);
+
+		program->set();
+
+		// projection matrix
+		mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
+
+		// view matrix
+		vec3 lookAt = eye + vec3(0, 0, -1);
+		mat4 V = mat4::lookAt(eye, lookAt, vec3(0, 1, 0));
+		V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
+		
+		Graphics::setMatrix(vLocation, V);
+		Graphics::setMatrix(pLocation, P);
         
-        program->set();
+		//Graphics::setColorMask(false, false, false, false);
+		//Graphics::setRenderState(DepthWrite, false);
+
+        // draw bounding box
+        MeshObject** boundingBox = &objects[0];
+		while (*boundingBox != nullptr) {
+			// set the model matrix
+			Graphics::setMatrix(mLocation, (*boundingBox)->M);
+
+			if ((*boundingBox)->useQueries) {
+				(*boundingBox)->renderOcclusionQuery();
+			}
+
+			++boundingBox;
+        }
+
+		//Graphics::setColorMask(true, true, true, true);
+		//Graphics::setRenderState(DepthWrite, true);
+
+
+		
 		Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
 		Graphics::setRenderState(BlendingState, true);
 		Graphics::setRenderState(DepthTest, true);
 		Graphics::setRenderState(DepthTestCompare, ZCompareLess);
 		Graphics::setRenderState(DepthWrite, true);
-        
-		// Projection matrix
-		mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
 
-		// Camera matrix
-		vec3 lookAt = eye + vec3(0, 0, -1);
-		mat4 V = mat4::lookAt(eye, lookAt, vec3(0, 1, 0));
-		V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
+		// draw real objects
+		int renderCount = 0;
+		MeshObject** current = &objects[0];
+		while (*current != nullptr) {
+			// set the model matrix
+			Graphics::setMatrix(mLocation, (*current)->M);
 
-		
-		Graphics::setMatrix(vLocation, V);
-		Graphics::setMatrix(pLocation, P);
-        
-		renderObjectNum = 0;
-        // iterate the MeshObjects
-        MeshObject** current = &objects[0];
-        while (*current != nullptr) {
-            // set the model matrix
-            Graphics::setMatrix(mLocation, (*current)->M);
-            
-            (*current)->render(tex);
-            ++current;
+			if ((*current)->occluded) {
+				(*current)->render(tex);
+				++renderCount;
+			}
 
-			renderObjectNum++;
-        }
+			++current;
+		}
+		renderObjectNum = renderCount;
         
         Graphics::end();
         Graphics::swapBuffers();
@@ -139,11 +156,12 @@ namespace {
 			backward = true;
 			break;
 		case Key_R:
-			initCameraAndLight();
+			initCamera();
 			break;
 		case Key_L:
-			Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)\n", eye.x(), eye.y(), eye.z(), globe.x(), globe.y(), globe.z());
-			//Kore::log(Kore::LogLevel::Info, "Render Object Count: %i\n", renderObjectNum);
+			Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)", eye.x(), eye.y(), eye.z(), globe.x(), globe.y(), globe.z());
+			log(Info, "Render Object Count: %i", renderObjectNum);
+			log(Info, "pixel %u %u\n", objects[0]->pixelCount, objects[1]->pixelCount);
 			break;
 		default:
 			break;
@@ -250,7 +268,7 @@ int kore(int argc, char** argv) {
 	Mouse::the()->Press = mousePress;
 	Mouse::the()->Release = mouseRelease;
     
-	initCameraAndLight();
+	initCamera();
 
     Kore::System::start();
     
