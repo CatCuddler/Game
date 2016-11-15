@@ -40,7 +40,7 @@ public:
     void render(Kore::TextureUnit tex);
     
     Kore::mat4 M; // Model matrix
-
-	Kore::uint pixelCount; // should be private
+    
+    Kore::uint pixelCount; // should be private
     
 };

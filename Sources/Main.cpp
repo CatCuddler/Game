@@ -25,7 +25,7 @@ namespace {
     
     // null terminated array of MeshObject pointers
     MeshObject* objects[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-	int renderObjectNum = 0;
+    int renderObjectNum = 0;
     
     // uniform locations - add more as you see fit
     TextureUnit tex;
@@ -42,8 +42,8 @@ namespace {
 	int mousePressX, mousePressY;
     
 	void initCamera() {
-		eye = vec3(0, 0, 20);
-		globe = vec3(0, Kore::pi, 0);
+        eye = vec3(0, 0, 20);
+        globe = vec3(0, Kore::pi, 0);
 	}
 
     void update() {
@@ -71,62 +71,60 @@ namespace {
         
         Graphics::begin();
         Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xFF000000, 1.0f, 0);
-
-		program->set();
-
-		// projection matrix
-		mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
-
-		// view matrix
-		vec3 lookAt = eye + vec3(0, 0, -1);
-		mat4 V = mat4::lookAt(eye, lookAt, vec3(0, 1, 0));
-		V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
-		
-		Graphics::setMatrix(vLocation, V);
-		Graphics::setMatrix(pLocation, P);
         
-		//Graphics::setColorMask(false, false, false, false);
-		//Graphics::setRenderState(DepthWrite, false);
-
-        // draw bounding box
+        program->set();
+        
+        // projection matrix
+        mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
+        
+        // view matrix
+        vec3 lookAt = eye + vec3(0, 0, -1);
+        mat4 V = mat4::lookAt(eye, lookAt, vec3(0, 1, 0));
+        V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
+        
+        Graphics::setMatrix(vLocation, V);
+        Graphics::setMatrix(pLocation, P);
+        
+        Graphics::setColorMask(false, false, false, false);
+        Graphics::setRenderState(DepthWrite, false);
+        
+        // draw bounding box for each object
         MeshObject** boundingBox = &objects[0];
-		while (*boundingBox != nullptr) {
-			// set the model matrix
-			Graphics::setMatrix(mLocation, (*boundingBox)->M);
-
-			if ((*boundingBox)->useQueries) {
-				(*boundingBox)->renderOcclusionQuery();
-			}
-
-			++boundingBox;
+        while (*boundingBox != nullptr) {
+            // set the model matrix
+            Graphics::setMatrix(mLocation, (*boundingBox)->M);
+            
+            if ((*boundingBox)->useQueries) {
+                    (*boundingBox)->renderOcclusionQuery();
+            }
+            
+            ++boundingBox;
         }
-
-		//Graphics::setColorMask(true, true, true, true);
-		//Graphics::setRenderState(DepthWrite, true);
-
-
-		
-		Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
-		Graphics::setRenderState(BlendingState, true);
-		Graphics::setRenderState(DepthTest, true);
-		Graphics::setRenderState(DepthTestCompare, ZCompareLess);
-		Graphics::setRenderState(DepthWrite, true);
-
-		// draw real objects
-		int renderCount = 0;
-		MeshObject** current = &objects[0];
-		while (*current != nullptr) {
-			// set the model matrix
-			Graphics::setMatrix(mLocation, (*current)->M);
-
-			if ((*current)->occluded) {
-				(*current)->render(tex);
-				++renderCount;
-			}
-
-			++current;
-		}
-		renderObjectNum = renderCount;
+        
+        Graphics::setColorMask(true, true, true, true);
+        Graphics::setRenderState(DepthWrite, true);
+        
+        Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
+        Graphics::setRenderState(BlendingState, true);
+        Graphics::setRenderState(DepthTest, true);
+        Graphics::setRenderState(DepthTestCompare, ZCompareLess);
+        Graphics::setRenderState(DepthWrite, true);
+        
+        // draw real objects
+        int renderCount = 0;
+        MeshObject** current = &objects[0];
+        while (*current != nullptr) {
+            // set the model matrix
+            Graphics::setMatrix(mLocation, (*current)->M);
+            
+            if ((*current)->occluded) {
+                (*current)->render(tex);
+                ++renderCount;
+            }
+            
+            ++current;
+        }
+        renderObjectNum = renderCount;
         
         Graphics::end();
         Graphics::swapBuffers();

@@ -74,13 +74,13 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Kore
     }
     vertexBoundingBoxBuffer->unlock();
     
-	useQueries = Graphics::initOcclusionQuery(&occlusionQuery);
+    useQueries = Graphics::initOcclusionQuery(&occlusionQuery);
     
     M = mat4::Identity();
 }
 
 MeshObject::~MeshObject() {
-	Graphics::deleteOcclusionQuery(occlusionQuery);
+    Graphics::deleteOcclusionQuery(occlusionQuery);
 }
 
 void MeshObject::renderOcclusionQuery() {
@@ -90,7 +90,7 @@ void MeshObject::renderOcclusionQuery() {
         vertexBoundingBoxBuffer->unlock();
         
         Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
-        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount * 3);
+        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
         
         boundingBoxVertices = vertexBoundingBoxBuffer->lock();
     }
@@ -106,9 +106,9 @@ void MeshObject::renderOcclusionQuery() {
             occlusionState = Hidden;
         }
 	} else {
-		// If Query is not done yet; avoid wait by continuing with worst - case scenario.
-		//occluded = true;
-		//occlusionState = Visible;
+        // If Query is not done yet; avoid wait by continuing with worst - case scenario.
+        //occluded = true;
+        //occlusionState = Visible;
 	}
 
 
