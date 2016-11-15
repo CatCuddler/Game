@@ -86,16 +86,13 @@ MeshObject::~MeshObject() {
 void MeshObject::renderOcclusionQuery() {
     if (occlusionState != Waiting) {
         occlusionState = Waiting;
-        
-        vertexBoundingBoxBuffer->unlock();
-        
-        Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
-        Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
-        
-        boundingBoxVertices = vertexBoundingBoxBuffer->lock();
+		//vertexBoundingBoxBuffer->unlock();
+		Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
+		Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
+		//boundingBoxVertices = vertexBoundingBoxBuffer->lock();
     }
-    
-    bool available = Graphics::isQueryResultsAvailable(occlusionQuery);
+	
+	bool available = Graphics::isQueryResultsAvailable(occlusionQuery);
     if (available) {
         Graphics::getQueryResults(occlusionQuery, &pixelCount);
         if (pixelCount > 0) {
