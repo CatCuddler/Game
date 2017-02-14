@@ -84,30 +84,34 @@ MeshObject::~MeshObject() {
 }
 
 void MeshObject::renderOcclusionQuery() {
-    if (occlusionState != Waiting) {
-        occlusionState = Waiting;
-		//vertexBoundingBoxBuffer->unlock();
-		Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
-		Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
-		//boundingBoxVertices = vertexBoundingBoxBuffer->lock();
-    }
-	
-	bool available = Graphics::isQueryResultsAvailable(occlusionQuery);
-    if (available) {
-        Graphics::getQueryResults(occlusionQuery, &pixelCount);
-        if (pixelCount > 0) {
-            occluded = true;
-            occlusionState = Visible;
-        } else {
-            occluded = false;
-            occlusionState = Hidden;
+    
+    if (!useQueries) {
+        occluded = true;
+    } else {
+        if (occlusionState != Waiting) {
+            occlusionState = Waiting;
+            //vertexBoundingBoxBuffer->unlock();
+            Graphics::setVertexBuffer(*vertexBoundingBoxBuffer);
+            Graphics::renderOcclusionQuery(occlusionQuery, trianglesCount);
+            //boundingBoxVertices = vertexBoundingBoxBuffer->lock();
         }
-	} else {
-        // If Query is not done yet; avoid wait by continuing with worst - case scenario.
-        //occluded = true;
-        //occlusionState = Visible;
-	}
-
+        
+        bool available = Graphics::isQueryResultsAvailable(occlusionQuery);
+        if (available) {
+            Graphics::getQueryResults(occlusionQuery, &pixelCount);
+            if (pixelCount > 0) {
+                occluded = true;
+                occlusionState = Visible;
+            } else {
+                occluded = false;
+                occlusionState = Hidden;
+            }
+        } else {
+            // If Query is not done yet; avoid wait by continuing with worst - case scenario.
+            //occluded = true;
+            //occlusionState = Visible;
+        }
+    }
 
 }
 
