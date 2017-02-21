@@ -9,7 +9,12 @@
 #include <Kore/Graphics/Graphics.h>
 #include <Kore/Log.h>
 #include "MeshObject.h"
-#include <iostream>
+
+#ifdef VR_RIFT
+#include <Kore/Math/Quaternion.h>
+#include <Kore/Vr/VrInterface.h>
+#include <Kore/Vr/SensorState.h>
+#endif
 
 using namespace Kore;
 
@@ -48,7 +53,12 @@ namespace {
 
     void update() {
         float t = (float)(System::time() - startTime);
-        
+		
+#ifdef VR_RIFT
+		
+		
+#endif
+		
         const float speed = 0.5f;
         if (left) {
             eye.x() -= speed;
@@ -129,7 +139,21 @@ namespace {
         Graphics::end();
         Graphics::swapBuffers();
     }
-    
+	
+#ifdef VR_RIFT
+	private void getViewMatrix(SensorState state, int eye) {
+		
+		Kore::Quaternion orientation = state->predicted->vrPose->Orientation;
+		
+		float EyeYaw = 0;
+		float EyePitch = 0;
+		float EyeRoll = 0;
+		
+		
+	}
+	
+#endif
+	
 	void keyDown(KeyCode code, wchar_t character) {
 		switch (code)
 		{
