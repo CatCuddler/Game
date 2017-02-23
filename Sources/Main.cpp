@@ -31,6 +31,8 @@ namespace {
     // null terminated array of MeshObject pointers
     MeshObject* objects[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
     int renderObjectNum = 0;
+
+	MeshObject* tiger;
     
     // uniform locations - add more as you see fit
     TextureUnit tex;
@@ -51,13 +53,61 @@ namespace {
         globe = vec3(0, Kore::pi, 0);
 	}
 
+#ifdef VR_RIFT
+	mat4 getViewMatrix(SensorState* state, int eye) {
+
+		Quaternion orientation = state->predicted->vrPose->orientation;
+		vec3 position = state->predicted->vrPose->position;
+
+		// Get view matrices
+		mat4 rollPitchYaw = orientation.matrix();
+		vec3 up = vec3(0, 1, 0);
+		vec3 eyePos = rollPitchYaw * vec4(position.x(), position.y(), position.z(), 0);
+		vec3 lookAt = eyePos + vec3(0, 0, -1);
+		mat4 view = mat4::lookAt(eyePos, lookAt, up);
+		return view;
+	}
+
+	mat4 getProjectionMatrix(SensorState* state, int eye) {
+		float left = state->predicted->vrPose->left;
+		float right = state->predicted->vrPose->right;
+		float bottom = state->predicted->vrPose->bottom;
+		float top = state->predicted->vrPose->top;
+
+		// Get projection matrices
+		//mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
+		mat4 proj = mat4::orthogonalProjection(left, right, bottom, top, 0.1f, 1000.0f);
+		return proj;
+	}
+
+#endif
+
     void update() {
         float t = (float)(System::time() - startTime);
+
+		Graphics::begin();
+		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xFF000000, 1.0f, 0);
+
+		program->set();
 		
 #ifdef VR_RIFT
-		
-		
-#endif
+		SensorState* state = VrInterface::getSensorState();
+
+		if (state->isVisible) {
+			for (int eye = 0; eye < 2; ++eye) {
+				mat4 view = getViewMatrix(state, eye);
+				mat4 proj = getProjectionMatrix(state, eye);
+
+				Graphics::setMatrix(vLocation, view);
+				Graphics::setMatrix(pLocation, proj);
+
+				// render world
+				Graphics::setMatrix(mLocation, tiger->M);
+				tiger->render(tex);
+			}
+		}
+
+#else
 		
         const float speed = 0.5f;
         if (left) {
@@ -78,11 +128,6 @@ namespace {
         if (down) {
             eye.y() -= speed;
         }
-        
-        Graphics::begin();
-        Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xFF000000, 1.0f, 0);
-        
-        program->set();
         
         // projection matrix
         mat4 P = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100);
@@ -136,23 +181,10 @@ namespace {
         }
         renderObjectNum = renderCount;
         
-        Graphics::end();
-        Graphics::swapBuffers();
-    }
-	
-#ifdef VR_RIFT
-	private void getViewMatrix(SensorState state, int eye) {
-		
-		Kore::Quaternion orientation = state->predicted->vrPose->Orientation;
-		
-		float EyeYaw = 0;
-		float EyePitch = 0;
-		float EyeRoll = 0;
-		
-		
-	}
-	
 #endif
+		Graphics::end();
+		Graphics::swapBuffers();
+    }
 	
 	void keyDown(KeyCode code, wchar_t character) {
 		switch (code)
@@ -264,6 +296,8 @@ namespace {
 		objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
 		objects[1] = new MeshObject("earth.obj", "earth.png", structure, 3.0f);
 		objects[1]->M = mat4::Translation(-10.0f, 0.0f, 0.0f);
+
+		tiger = new MeshObject("tiger.obj", "tigeratlas.jpg", structure);
         
         Graphics::setRenderState(DepthTest, true);
         Graphics::setRenderState(DepthTestCompare, ZCompareLess);
