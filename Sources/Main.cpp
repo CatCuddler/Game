@@ -106,6 +106,9 @@ namespace {
 				tiger->render(tex);
 			}
 		}
+		if (state->shouldQuit) {
+			VrInterface::ovrShutdown();
+		}
 
 #else
 		
