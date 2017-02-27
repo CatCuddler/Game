@@ -161,6 +161,8 @@ namespace {
 			VrInterface::ovrShutdown();
 		}
 
+		VrInterface::warpSwap();
+
 #else
         
         // projection matrix
