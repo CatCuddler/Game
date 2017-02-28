@@ -36,6 +36,8 @@ namespace {
     int renderObjectNum = 0;
 
 	MeshObject* tiger;
+
+	bool sit = false;
     
     // uniform locations - add more as you see fit
     TextureUnit tex;
@@ -59,8 +61,8 @@ namespace {
 #ifdef VR_RIFT
 	mat4 getViewMatrix(SensorState* state) {
 
-		Quaternion orientation = state->predicted->vrPose->orientation;
-		vec3 position = state->predicted->vrPose->position;
+		Quaternion orientation = state->pose->vrPose->orientation;
+		vec3 position = state->pose->vrPose->position;
 
 		// Get view matrices
 		mat4 rollPitchYaw = orientation.matrix();
@@ -102,15 +104,15 @@ namespace {
 	}
 
 	mat4 getProjectionMatrix(SensorState* state) {
-		float left = state->predicted->vrPose->left;
-		float right = state->predicted->vrPose->right;
-		float bottom = state->predicted->vrPose->bottom;
-		float top = state->predicted->vrPose->top;
+		float left = state->pose->vrPose->left;
+		float right = state->pose->vrPose->right;
+		float bottom = state->pose->vrPose->bottom;
+		float top = state->pose->vrPose->top;
 
 		// Get projection matrices
-		mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
+		//mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
 		//mat4 proj = mat4::orthogonalProjection(left, right, top, bottom, 0.1f, 100.0f); // top and bottom are same
-		//mat4 proj = getOrthogonalProjection(left, right, top, bottom, 0.1f, 100.0f);
+		mat4 proj = getOrthogonalProjection(left, right, top, bottom, 0.1f, 100.0f);
 		return proj;
 	}
 
@@ -250,6 +252,17 @@ namespace {
 			break;
 		case Key_R:
 			initCamera();
+#ifdef VR_RIFT
+			VrInterface::resetHmdPose();
+#endif
+			break;
+		case Key_U:
+#ifdef VR_RIFT
+			sit = !sit;
+			if (sit) VrInterface::updateTrackingOrigin(TrackingOrigin::Sit);
+			else VrInterface::updateTrackingOrigin(TrackingOrigin::Stand);
+			log(Info, sit ? "Sit" : "Stand up");
+#endif
 			break;
 		case Key_L:
 			Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)", playerPosition.x(), playerPosition.y(), playerPosition.z(), globe.x(), globe.y(), globe.z());
