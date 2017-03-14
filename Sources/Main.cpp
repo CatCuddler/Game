@@ -56,8 +56,12 @@ namespace {
 	bool debug = false;
     
 	void initCamera() {
+#ifdef VR_RIFT
 		playerPosition = vec3(0, 0, 0);
-        globe = vec3(0, Kore::pi, 0);
+#else
+		playerPosition = vec3(0, 0, 20); 
+#endif
+		globe = vec3(0, Kore::pi, 0);
 	}
 
 #ifdef VR_RIFT
@@ -149,7 +153,7 @@ namespace {
 		}
 
 		Graphics::begin();
-		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, Color::Blue, 1.0f, 0);
+		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, Color::Black, 1.0f, 0);
 
 		program->set();
 		
