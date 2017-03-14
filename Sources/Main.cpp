@@ -52,6 +52,8 @@ namespace {
 	
 	bool rotate = false;
 	int mousePressX, mousePressY;
+
+	bool debug = false;
     
 	void initCamera() {
 		playerPosition = vec3(0, 0, 0);
@@ -63,6 +65,11 @@ namespace {
 
 		Quaternion orientation = state->pose->vrPose->orientation;
 		vec3 position = state->pose->vrPose->position;
+
+		if (debug) {
+			log(Info, "Pos %f %f %f", position.x(), position.y(), position.z());
+			log(Info, "Player Pos %f %f %f", playerPosition.x(), playerPosition.y(), playerPosition.z());
+		}
 
 		// Get view matrices
 		mat4 rollPitchYaw = orientation.matrix();
@@ -110,9 +117,9 @@ namespace {
 		float top = state->pose->vrPose->top;
 
 		// Get projection matrices
-		//mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
+		mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
 		//mat4 proj = mat4::orthogonalProjection(left, right, top, bottom, 0.1f, 100.0f); // top and bottom are same
-		mat4 proj = getOrthogonalProjection(left, right, top, bottom, 0.1f, 100.0f);
+		//mat4 proj = getOrthogonalProjection(left, right, top, bottom, 0.1f, 100.0f);
 		return proj;
 	}
 
@@ -148,11 +155,11 @@ namespace {
 		
 #ifdef VR_RIFT
 
+		VrInterface::begin();
 		for (int eye = 0; eye < 2; ++eye) {
-			VrInterface::begin(eye);
+			VrInterface::beginRender(eye);
 
 			SensorState* state = VrInterface::getSensorState(eye);
-
 			mat4 view = getViewMatrix(state);
 			mat4 proj = getProjectionMatrix(state);
 
@@ -163,7 +170,7 @@ namespace {
 			Graphics::setMatrix(mLocation, tiger->M);
 			tiger->render(tex);
 
-			VrInterface::end(eye);
+			VrInterface::endRender(eye);
 		}
 
 		VrInterface::warpSwap();
