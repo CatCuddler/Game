@@ -1,14 +1,14 @@
 #include "pch.h"
 
 #include <Kore/IO/FileReader.h>
-#include <Kore/Math/Core.h>
+#include <Kore/Graphics4/PipelineState.h>
 #include <Kore/System.h>
 #include <Kore/Input/Keyboard.h>
 #include <Kore/Input/Mouse.h>
-#include <Kore/Graphics/Image.h>
-#include <Kore/Graphics/Graphics.h>
-#include <Kore/Graphics/Color.h>
+#include <Kore/Graphics4/Graphics.h>
+#include <Kore/Graphics1/Color.h>
 #include <Kore/Log.h>
+
 #include "MeshObject.h"
 
 #ifdef VR_RIFT
@@ -17,9 +17,8 @@
 #include <Kore/Vr/SensorState.h>
 #endif
 
-#include <Kore/Graphics/Graphics.h>
-
 using namespace Kore;
+using namespace Kore::Graphics4;
 
 #define CAMERA_ROTATION_SPEED 0.001
 
@@ -29,7 +28,7 @@ namespace {
     double startTime;
     Shader* vertexShader;
     Shader* fragmentShader;
-    Program* program;
+    PipelineState* pipeline;
     
     // null terminated array of MeshObject pointers
     MeshObject* objects[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
@@ -152,10 +151,10 @@ namespace {
 			playerPosition.y() -= speed;
 		}
 
-		Graphics::begin();
-		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, Color::Black, 1.0f, 0);
+		Graphics4::begin();
+		Graphics4::clear(Graphics4::ClearColorFlag | Graphics4::ClearDepthFlag, Graphics1::Color::Black, 1.0f, 0);
 
-		program->set();
+		Graphics4::setPipeline(pipeline);
 		
 #ifdef VR_RIFT
 
@@ -167,11 +166,11 @@ namespace {
 			mat4 view = getViewMatrix(state);
 			mat4 proj = getProjectionMatrix(state);
 
-			Graphics::setMatrix(vLocation, view);
-			Graphics::setMatrix(pLocation, proj);
+			Graphics4::setMatrix(vLocation, view);
+			Graphics4::setMatrix(pLocation, proj);
 
 			// Render world
-			Graphics::setMatrix(mLocation, tiger->M);
+			Graphics4::setMatrix(mLocation, tiger->M);
 			tiger->render(tex);
 
 			VrInterface::endRender(eye);
@@ -189,17 +188,20 @@ namespace {
         mat4 V = mat4::lookAt(playerPosition, lookAt, vec3(0, 1, 0));
         V *= mat4::Rotation(globe.x(), globe.y(), globe.z());
         
-        Graphics::setMatrix(vLocation, V);
-        Graphics::setMatrix(pLocation, P);
+        Graphics4::setMatrix(vLocation, V);
+        Graphics4::setMatrix(pLocation, P);
+		
+		Graphics4::setMatrix(mLocation, tiger->M);
+		tiger->render(tex);
         
-        Graphics::setColorMask(false, false, false, false);
+/*        Graphics::setColorMask(false, false, false, false);
         Graphics::setRenderState(DepthWrite, false);
         
         // draw bounding box for each object
         MeshObject** boundingBox = &objects[0];
         while (*boundingBox != nullptr) {
             // set the model matrix
-            Graphics::setMatrix(mLocation, (*boundingBox)->M);
+            Graphics4::setMatrix(mLocation, (*boundingBox)->M);
             
             if ((*boundingBox)->useQueries) {
                     (*boundingBox)->renderOcclusionQuery();
@@ -208,7 +210,7 @@ namespace {
             ++boundingBox;
         }
         
-        Graphics::setColorMask(true, true, true, true);
+        Graphics4::setColorMask(true, true, true, true);
         Graphics::setRenderState(DepthWrite, true);
         
         Graphics::setBlendingMode(SourceAlpha, Kore::BlendingOperation::InverseSourceAlpha);
@@ -222,7 +224,7 @@ namespace {
         MeshObject** current = &objects[0];
         while (*current != nullptr) {
             // set the model matrix
-            Graphics::setMatrix(mLocation, (*current)->M);
+            Graphics4::setMatrix(mLocation, (*current)->M);
             
             if ((*current)->occluded) {
                 (*current)->render(tex);
@@ -231,43 +233,45 @@ namespace {
             
             ++current;
         }
-        renderObjectNum = renderCount;
+        renderObjectNum = renderCount;*/
         
 #endif
-		Graphics::end();
-		Graphics::swapBuffers();
+		Graphics4::setPipeline(pipeline);
+		
+		Graphics4::end();
+		Graphics4::swapBuffers();
     }
 	
-	void keyDown(KeyCode code, wchar_t character) {
+	void keyDown(KeyCode code) {
 		switch (code)
 		{
-		case Key_Left:
-		case Key_A:
+		case Kore::KeyLeft:
+		case Kore::KeyA:
 			left = true;
 			break;
-		case Key_Right:
-		case Key_D:
+		case Kore::KeyRight:
+		case Kore::KeyD:
 			right = true;
 			break;
-		case Key_Up:
+		case Kore::KeyUp:
 			up = true;
 			break;
-		case Key_Down:
+		case Kore::KeyDown:
 			down = true;
 			break;
-		case Key_W:
+		case Kore::KeyW:
 			forward = true;
 			break;
-		case Key_S:
+		case Kore::KeyS:
 			backward = true;
 			break;
-		case Key_R:
+		case Kore::KeyR:
 			initCamera();
 #ifdef VR_RIFT
 			VrInterface::resetHmdPose();
 #endif
 			break;
-		case Key_U:
+		case KeyU:
 #ifdef VR_RIFT
 			sit = !sit;
 			if (sit) VrInterface::updateTrackingOrigin(TrackingOrigin::Sit);
@@ -275,7 +279,7 @@ namespace {
 			log(Info, sit ? "Sit" : "Stand up");
 #endif
 			break;
-		case Key_L:
+		case KeyL:
 			Kore::log(Kore::LogLevel::Info, "Position: (%.2f, %.2f, %.2f) - Rotation: (%.2f, %.2f, %.2f)", playerPosition.x(), playerPosition.y(), playerPosition.z(), globe.x(), globe.y(), globe.z());
 			log(Info, "Render Object Count: %i", renderObjectNum);
 			log(Info, "pixel %u %u\n", objects[0]->pixelCount, objects[1]->pixelCount);
@@ -285,27 +289,27 @@ namespace {
 		}
 	}
 
-	void keyUp(KeyCode code, wchar_t character) {
+	void keyUp(KeyCode code) {
 		switch (code)
 		{
-		case Key_Left:
-		case Key_A:
+		case Kore::KeyLeft:
+		case Kore::KeyA:
 			left = false;
 			break;
-		case Key_Right:
-		case Key_D:
+		case Kore::KeyRight:
+		case Kore::KeyD:
 			right = false;
 			break;
-		case Key_Up:
+		case Kore::KeyUp:
 			up = false;
 			break;
-		case Key_Down:
+		case Kore::KeyDown:
 			down = false;
 			break;
-		case Key_W:
+		case Kore::KeyW:
 			forward = false;
 			break;
-		case Key_S:
+		case Kore::KeyS:
 			backward = false;
 			break;
 		default:
@@ -344,16 +348,24 @@ namespace {
         structure.add("tex", Float2VertexData);
         structure.add("nor", Float3VertexData);
         
-        program = new Program;
-        program->setVertexShader(vertexShader);
-        program->setFragmentShader(fragmentShader);
-        program->link(structure);
+		pipeline = new PipelineState;
+		pipeline->inputLayout[0] = &structure;
+		pipeline->inputLayout[1] = nullptr;
+		pipeline->vertexShader = vertexShader;
+		pipeline->fragmentShader = fragmentShader;
+		pipeline->depthMode = ZCompareLess;
+		pipeline->depthWrite = true;
+		pipeline->blendSource = Graphics4::SourceAlpha;
+		pipeline->blendDestination = Graphics4::InverseSourceAlpha;
+		pipeline->alphaBlendSource = Graphics4::SourceAlpha;
+		pipeline->alphaBlendDestination = Graphics4::InverseSourceAlpha;
+		pipeline->compile();
+		
+        tex = pipeline->getTextureUnit("tex");
         
-        tex = program->getTextureUnit("tex");
-        
-		pLocation = program->getConstantLocation("P");
-        vLocation = program->getConstantLocation("V");
-        mLocation = program->getConstantLocation("M");
+		pLocation = pipeline->getConstantLocation("P");
+        vLocation = pipeline->getConstantLocation("V");
+        mLocation = pipeline->getConstantLocation("M");
         
 		objects[0] = new MeshObject("earth.obj", "earth.png", structure, 1.0f);
 		objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
@@ -363,11 +375,9 @@ namespace {
 		tiger = new MeshObject("tiger.obj", "tigeratlas.jpg", structure);
 		tiger->M = mat4::Translation(0.0, 0.0, -5.0);
         
-        Graphics::setRenderState(DepthTest, true);
-        Graphics::setRenderState(DepthTestCompare, ZCompareLess);
-        
-        Graphics::setTextureAddressing(tex, Kore::U, Repeat);
-        Graphics::setTextureAddressing(tex, Kore::V, Repeat);
+		
+        Graphics4::setTextureAddressing(tex, Graphics4::U, Repeat);
+        Graphics4::setTextureAddressing(tex, Graphics4::V, Repeat);
     }
 }
 
