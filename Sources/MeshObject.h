@@ -10,38 +10,41 @@
 
 
 namespace Kore {
-    enum EntityMeshOcclusionState {
-        Hidden, Visible, Waiting
-    };
+	enum EntityMeshOcclusionState {
+		Hidden, Visible, Waiting
+	};
 }
 class MeshObject {
-    
-private:
-    Kore::Graphics4::VertexBuffer* vertexBuffer;               // Mesh Vertex Buffer
-//    Kore::Graphics4::VertexBuffer* vertexBoundingBoxBuffer;    // Bounding Box Vertex Buffer
-    Kore::Graphics4::IndexBuffer* indexBuffer;
-    
-//    int trianglesCount;
-//    float* boundingBoxVertices;
-    
-    Mesh* mesh;
-    Kore::Graphics4::Texture* image;
-    
-//    Kore::uint occlusionQuery;
-
-public:
-//	bool useQueries;
-//    bool occluded;
-//    Kore::EntityMeshOcclusionState occlusionState;
-    
-    MeshObject(const char* meshFile, const char* textureFile, const Kore::Graphics4::VertexStructure& structure, float scale = 1.0f);
-    ~MeshObject();
-    
-//    void renderOcclusionQuery();
-    void render(Kore::Graphics4::TextureUnit tex);
 	
-    Kore::mat4 M; // Model matrix
-    
-    Kore::uint pixelCount; // should be private
-    
+private:
+	Kore::Graphics4::VertexBuffer* vertexBuffer;               // Mesh Vertex Buffer
+	Kore::Graphics4::IndexBuffer* indexBuffer;
+	
+	Kore::Graphics4::VertexBuffer* vertexBoundingBoxBuffer;    // Bounding Box Vertex Buffer
+	Kore::Graphics4::IndexBuffer* indexBoundingBoxBuffer;
+	
+	int trianglesCount;
+	float* boundingBoxVertices;
+	
+	Mesh* mesh;
+	Kore::Graphics4::Texture* image;
+	
+	Kore::uint occlusionQuery;
+	
+public:
+	bool useQueries;
+	bool occluded;
+	Kore::EntityMeshOcclusionState occlusionState;
+	
+	MeshObject(const char* meshFile, const char* textureFile, const Kore::Graphics4::VertexStructure& structure, float scale = 1.0f);
+	~MeshObject();
+	
+	void renderOcclusionQuery();
+	void render(Kore::Graphics4::TextureUnit tex);
+	void render2(Kore::Graphics4::TextureUnit tex);
+	
+	Kore::mat4 M; // Model matrix
+	
+	Kore::uint pixelCount; // should be private
+	
 };
