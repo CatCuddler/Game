@@ -5,6 +5,7 @@
 #include <Kore/IndexBufferImpl.h>
 #include <Kore/Graphics4/Texture.h>
 #include <Kore/Math/Matrix.h>
+#include <Kore/Graphics4/VertexStructure.h>
 
 #include "ObjLoader.h"
 
