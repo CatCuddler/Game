@@ -12,7 +12,7 @@
 
 #include "MeshObject.h"
 
-#ifdef VR_RIFT
+#ifdef KORE_OCULUS
 #include <Kore/Math/Quaternion.h>
 #include <Kore/Vr/VrInterface.h>
 #include <Kore/Vr/SensorState.h>
@@ -64,7 +64,7 @@ namespace {
 	bool debug = false;
 	
 	void initCamera() {
-#ifdef VR_RIFT
+#ifdef KORE_OCULUS
 		playerPosition = vec3(0, 0, 0);
 #else
 		playerPosition = vec3(0, 0, 20);
@@ -72,11 +72,11 @@ namespace {
 		globe = vec3(0, Kore::pi, 0);
 	}
 	
-#ifdef VR_RIFT
-	mat4 getViewMatrix(SensorState* state) {
+#ifdef KORE_OCULUS
+	mat4 getViewMatrix(SensorState state) {
 		
-		Quaternion orientation = state->pose->vrPose->orientation;
-		vec3 position = state->pose->vrPose->position;
+		Quaternion orientation = state.pose.vrPose.orientation;
+		vec3 position = state.pose.vrPose.position;
 		
 		if (debug) {
 			log(Info, "Pos %f %f %f", position.x(), position.y(), position.z());
@@ -122,11 +122,11 @@ namespace {
 		return m;
 	}
 	
-	mat4 getProjectionMatrix(SensorState* state) {
-		float left = state->pose->vrPose->left;
-		float right = state->pose->vrPose->right;
-		float bottom = state->pose->vrPose->bottom;
-		float top = state->pose->vrPose->top;
+	mat4 getProjectionMatrix(SensorState state) {
+		float left = state.pose.vrPose.left;
+		float right = state.pose.vrPose.right;
+		float bottom = state.pose.vrPose.bottom;
+		float top = state.pose.vrPose.top;
 		
 		// Get projection matrices
 		mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
@@ -165,13 +165,13 @@ namespace {
 		
 		Graphics4::setPipeline(pipeline);
 		
-#ifdef VR_RIFT
+#ifdef KORE_OCULUS
 		
 		VrInterface::begin();
 		for (int eye = 0; eye < 2; ++eye) {
 			VrInterface::beginRender(eye);
 			
-			SensorState* state = VrInterface::getSensorState(eye);
+			SensorState state = VrInterface::getSensorState(eye);
 			mat4 view = getViewMatrix(state);
 			mat4 proj = getProjectionMatrix(state);
 			
@@ -265,12 +265,12 @@ namespace {
 				break;
 			case Kore::KeyR:
 				initCamera();
-#ifdef VR_RIFT
+#ifdef KORE_OCULUS
 				VrInterface::resetHmdPose();
 #endif
 				break;
 			case KeyU:
-#ifdef VR_RIFT
+#ifdef KORE_OCULUS
 				sit = !sit;
 				if (sit) VrInterface::updateTrackingOrigin(TrackingOrigin::Sit);
 				else VrInterface::updateTrackingOrigin(TrackingOrigin::Stand);
