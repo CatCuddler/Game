@@ -14,6 +14,10 @@ cd ..
 
 node Kore/make -g openGL
 
-Additionally use --vr oculus to compule for VR.
+or
+
+node Kore/make -g direct3d11
+
+Additionally use --vr oculus to compule for Oculus Rift.
 
 Open Project in build Directory.
