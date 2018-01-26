@@ -76,6 +76,9 @@ namespace {
 	mat4 getViewMatrix(SensorState state) {
 		
 		Quaternion orientation = state.pose.vrPose.orientation;
+		orientation.rotate(Quaternion(vec3(1, 0, 0), Kore::pi));
+		orientation.rotate(Quaternion(vec3(0, 1, 0), Kore::pi));
+
 		vec3 position = state.pose.vrPose.position;
 		
 		if (debug) {
@@ -172,8 +175,8 @@ namespace {
 			VrInterface::beginRender(eye);
 			
 			SensorState state = VrInterface::getSensorState(eye);
-			mat4 view = getViewMatrix(state);
-			mat4 proj = getProjectionMatrix(state);
+			mat4 view = state.pose.vrPose.eye;// getViewMatrix(state);
+			mat4 proj = state.pose.vrPose.projection;// getProjectionMatrix(state);
 			
 			Graphics4::setMatrix(vLocation, view);
 			Graphics4::setMatrix(pLocation, proj);
