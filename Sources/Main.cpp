@@ -72,71 +72,6 @@ namespace {
 		globe = vec3(0, Kore::pi, 0);
 	}
 	
-#ifdef KORE_OCULUS
-	mat4 getViewMatrix(SensorState state) {
-		
-		Quaternion orientation = state.pose.vrPose.orientation;
-		vec3 position = state.pose.vrPose.position;
-		
-		if (debug) {
-			log(Info, "Pos %f %f %f", position.x(), position.y(), position.z());
-			log(Info, "Player Pos %f %f %f", playerPosition.x(), playerPosition.y(), playerPosition.z());
-		}
-		
-		// Get view matrices
-		mat4 rollPitchYaw = orientation.matrix();
-		vec3 up = vec3(0, 1, 0);
-		vec3 eyePos = rollPitchYaw * vec4(position.x(), position.y(), position.z(), 0);
-		eyePos += playerPosition;
-		vec3 lookAt = eyePos + vec3(0, 0, -1);
-		mat4 view = mat4::lookAt(eyePos, lookAt, up);
-		
-		return view;
-	}
-	
-	mat4 getOrthogonalProjection(float left, float right, float up, float down, float zn, float zf) {
-		float projXScale = 2.0f / (left + right);
-		float projXOffset = (left - right) * projXScale * 0.5f;
-		float projYScale = 2.0f / (up + down);
-		float projYOffset = (up - down) * projYScale * 0.5f;
-		
-		bool flipZ = false;
-		
-		mat4 m = mat4::Identity();
-		m.Set(0, 0, 2 / (left + right));
-		m.Set(0, 1, 0);
-		m.Set(0, 2, projXOffset);
-		m.Set(0, 3, 0);
-		m.Set(1, 0, 0);
-		m.Set(1, 1, projYScale);
-		m.Set(1, 2, -projYOffset);
-		m.Set(1, 3, 0);
-		m.Set(2, 0, 0);
-		m.Set(2, 1, 0);
-		m.Set(2, 2, -1.0f * (zn + zf) / (zn - zf));
-		m.Set(2, 3, 2.0f * (zf * zn) / (zn - zf));
-		m.Set(3, 0, 0.0f);
-		m.Set(3, 1, 0.0f);
-		m.Set(3, 2, 1.0f);
-		m.Set(3, 3, 0.0f);
-		return m;
-	}
-	
-	mat4 getProjectionMatrix(SensorState state) {
-		float left = state.pose.vrPose.left;
-		float right = state.pose.vrPose.right;
-		float bottom = state.pose.vrPose.bottom;
-		float top = state.pose.vrPose.top;
-		
-		// Get projection matrices
-		mat4 proj = mat4::Perspective(45, (float)width / (float)height, 0.1f, 100.0f);
-		//mat4 proj = mat4::orthogonalProjection(left, right, top, bottom, 0.1f, 100.0f); // top and bottom are same
-		//mat4 proj = getOrthogonalProjection(left, right, top, bottom, 0.1f, 100.0f);
-		return proj;
-	}
-	
-#endif
-	
 	void update() {
 		float t = (float)(System::time() - startTime);
 		
@@ -172,8 +107,8 @@ namespace {
 			VrInterface::beginRender(eye);
 			
 			SensorState state = VrInterface::getSensorState(eye);
-			mat4 view = getViewMatrix(state);
-			mat4 proj = getProjectionMatrix(state);
+			mat4 view = state.pose.vrPose.eye;
+			mat4 proj = state.pose.vrPose.projection;
 			
 			Graphics4::setMatrix(vLocation, view);
 			Graphics4::setMatrix(pLocation, proj);
