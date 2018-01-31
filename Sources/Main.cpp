@@ -335,14 +335,15 @@ namespace {
 		initShader();
 		initOccluderShader();
 		
+#ifdef KORE_OCULUS
+		tiger = new MeshObject("tiger.obj", "tigeratlas.jpg", structure);
+		tiger->M = mat4::Translation(0.0, 0.0, -5.0);
+#else
 		objects[0] = new MeshObject("earth.obj", "earth.png", structure, 1.0f);
 		objects[0]->M = mat4::Translation(10.0f, 0.0f, 0.0f);
 		objects[1] = new MeshObject("earth.obj", "earth.png", structure, 3.0f);
 		objects[1]->M = mat4::Translation(-10.0f, 0.0f, 0.0f);
-		
-		tiger = new MeshObject("tiger.obj", "tigeratlas.jpg", structure);
-		tiger->M = mat4::Translation(0.0, 0.0, -5.0);
-		
+#endif
 		
 		Graphics4::setTextureAddressing(tex, Graphics4::U, Repeat);
 		Graphics4::setTextureAddressing(tex, Graphics4::V, Repeat);
