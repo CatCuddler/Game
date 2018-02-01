@@ -20,4 +20,4 @@ node Kore/make -g direct3d11
 
 Additionally use --vr oculus to compule for Oculus Rift.
 
-Open Project in build Directory.
+Open Project in build Directory. In Visual Studio choose Release and 64bit.
