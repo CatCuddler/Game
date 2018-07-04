@@ -12,7 +12,7 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Vert
 	image = new Texture(textureFile, true);
 	
 	// Mesh Vertex Buffer
-	vertexBuffer = new VertexBuffer(mesh->numVertices, structure, 0);
+	vertexBuffer = new VertexBuffer(mesh->numVertices, structure);
 	float* vertices = vertexBuffer->lock();
 	
 	float min_x, max_x, min_y;
@@ -51,7 +51,7 @@ MeshObject::MeshObject(const char* meshFile, const char* textureFile, const Vert
 	VertexStructure str;
 	str.add("pos", Float3VertexData);
 	trianglesCount = 12 * 3;
-	vertexBoundingBoxBuffer = new VertexBuffer(trianglesCount * 3, str, 0);
+	vertexBoundingBoxBuffer = new VertexBuffer(trianglesCount * 3, str);
 	boundingBoxVertices = vertexBoundingBoxBuffer->lock();
 	
 	float boundingBox[] = {
